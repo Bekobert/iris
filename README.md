@@ -1,27 +1,27 @@
 # Iris
 
-> Görsel ürün arama ve koleksiyon yönetimi platformu.
+> Visual product search and collection management platform.
 
-## Monorepo Yapısı
+## Structure
 
 ```
 iris/
-├── backend/      # Python / FastAPI — API, iş mantığı, DB
+├── backend/      # Python / FastAPI — API, BL, DB
 ├── extension/    # Chrome Extension — Manifest V3, Vanilla JS
-├── dashboard/    # Web arayüzü — React
-└── mobile/       # Mobil uygulama — React Native (Faz 3)
+├── dashboard/    # Web Interface — React
+└── mobile/       # Mobile App — React Native (Phase 3)
 ```
 
-## Geliştirme Durumu
+## Development Status
 
-| Paket | Durum |
+| Package | Status |
 |---|---|
-| backend | 🟡 İskelet hazır, Supabase entegrasyonu bekliyor |
-| extension | 🔴 Henüz başlanmadı |
-| dashboard | 🔴 Henüz başlanmadı |
-| mobile | 🔴 Planlanıyor (Faz 3) |
+| backend | 🟡 Structure is ready, Waiting for Supabase integration |
+| extension | 🔴 Not Started |
+| dashboard | 🔴 Not Started |
+| mobile | 🔴 Planning (Phase 3) |
 
-## Hızlı Başlangıç
+## QuickStart
 
 ### Backend
 
@@ -32,14 +32,14 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-API dokümantasyonu: http://localhost:8000/docs
+API Docs: http://localhost:8000/docs
 
-## Teknoloji Stack
+## Tech Stack
 
 - **Backend:** Python, FastAPI, Pydantic, Supabase, Stripe
 - **Extension:** Manifest V3, Vanilla JS
 - **Dashboard:** React
 - **Mobile:** React Native
-- **Görsel Arama:** Google Cloud Vision (MVP sonrası netleşecek)
+- **Visual Search:** Google Cloud Vision
 - **DB / Auth:** Supabase
-- **Ödeme:** Stripe
+- **Payment:** Stripe
