@@ -1,0 +1,108 @@
+// Iris — Background Service Worker
+// Handles backend communication and message routing.
+
+const API_BASE = "http://localhost:8000";
+
+// TODO (Phase 2): replace with real auth token after JWT login is implemented.
+// For now, a hardcoded test user UUID is used so the save flow can be exercised end-to-end.
+const DEV_USER_ID = "00000000-0000-0000-0000-000000000001";
+
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ tabId: tab.id });
+});
+
+// Listen for messages from content script and sidebar
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "SEARCH_IMAGE") {
+    searchImage(message.imageBase64)
+      .then((results) => sendResponse({ success: true, data: results }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === "SAVE_PRODUCT") {
+    saveProduct(message.product)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === "DELETE_PRODUCT") {
+    deleteProduct(message.savedProductId)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === "OPEN_SIDEBAR") {
+    chrome.sidePanel.open({ tabId: sender.tab.id });
+    sendResponse({ success: true });
+  }
+
+  if (message.type === "CAPTURE_TAB") {
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "jpeg", quality: 92 }, (dataUrl) => {
+      sendResponse({ dataUrl });
+    });
+    return true;
+  }
+
+  if (message.type === "SEARCH_RESULTS") {
+    chrome.runtime.sendMessage({ type: "SEARCH_RESULTS", data: message.data });
+    sendResponse({ success: true });
+  }
+});
+
+// ── API calls ─────────────────────────────────────────────
+
+async function searchImage(imageBase64) {
+  const response = await fetch(`${API_BASE}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image_base64: imageBase64, count: 6 }),
+  });
+  if (!response.ok) throw new Error(`Search API error: ${response.status}`);
+  return await response.json();
+}
+
+async function saveProduct(product) {
+  // Map ProductSearchResult → ProductSaveRequest
+  // product_id is a local identifier from the adapter and is not stored in the DB.
+  const body = {
+    collection_id: null,           // null → backend writes to default collection
+    product_name: product.product_name,
+    price: product.price ?? null,
+    currency: product.currency ?? "USD",
+    store_name: product.store_name,
+    store_url: product.store_url,
+    image_url: product.image_url,
+    similarity_score: product.similarity_score,
+    category: product.category ?? null,
+    source_api: product.source_api,
+  };
+
+  const response = await fetch(`${API_BASE}/products/save`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-User-Id": DEV_USER_ID,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (response.status === 402) {
+    // Free tier limit reached — surface a specific error the sidebar can handle
+    throw new Error("FREE_TIER_LIMIT");
+  }
+
+  if (!response.ok) throw new Error(`Save API error: ${response.status}`);
+  return await response.json();
+}
+
+async function deleteProduct(savedProductId) {
+  const response = await fetch(`${API_BASE}/products/${savedProductId}`, {
+    method: "DELETE",
+    headers: { "X-User-Id": DEV_USER_ID },
+  });
+  if (!response.ok) throw new Error(`Delete API error: ${response.status}`);
+}
