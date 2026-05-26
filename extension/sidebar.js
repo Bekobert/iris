@@ -178,7 +178,7 @@ snapBtn.addEventListener("click", () => {
   });
 });
 
-// ── Listen for results from background ───────────────────
+// ── Listen for messages from background ───────────────────
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "SEARCH_RESULTS") {
     if (message.data) {
@@ -187,6 +187,12 @@ chrome.runtime.onMessage.addListener((message) => {
     } else {
       state = "error";
     }
+    render();
+  }
+
+  // User pressed Esc on the crop overlay — return to idle
+  if (message.type === "SEARCH_CANCELLED") {
+    state = "idle";
     render();
   }
 });
