@@ -160,10 +160,12 @@ function showToast(message, type = "info") {
 }
 
 // ── Collection button ─────────────────────────────────────
+// Opens collection in a new tab, then closes the sidebar.
 collectionBtn.addEventListener("click", () => {
-  chrome.tabs.create({
-    url: chrome.runtime.getURL("collection.html"),
-  });
+  chrome.tabs.create(
+    { url: chrome.runtime.getURL("collection.html") },
+    () => { window.close(); }
+  );
 });
 
 // ── Snap button ───────────────────────────────────────────
