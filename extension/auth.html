@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iris — Sign In</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f11;
+      color: #e8e8ec;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      width: 340px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 32px 28px;
+    }
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .tagline {
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 22px;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .tab.active { color: #a78bfa; border-bottom-color: #a78bfa; }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px;
+      color: #e8e8ec;
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      margin-bottom: 14px;
+    }
+    input:focus { border-color: #6c63ff; }
+    .btn {
+      width: 100%;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 4px;
+    }
+    .btn:hover { background: #5a52e0; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error {
+      font-size: 12px;
+      color: #f87171;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .error.show { display: block; }
+    .info {
+      font-size: 12px;
+      color: #a78bfa;
+      background: rgba(167,139,250,0.08);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .info.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">iris</div>
+    <div class="tagline">Snap any product. Save it. Find the price.</div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-login">Sign In</div>
+      <div class="tab" id="tab-signup">Create Account</div>
+    </div>
+
+    <div id="error-msg" class="error"></div>
+    <div id="info-msg" class="info"></div>
+
+    <label>Email</label>
+    <input type="email" id="email" placeholder="you@example.com" />
+
+    <label>Password</label>
+    <input type="password" id="password" placeholder="••••••••" />
+
+    <button class="btn" id="submit-btn">Sign In</button>
+  </div>
+  <script src="auth.js"></script>
+</body>
+</html>
