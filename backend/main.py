@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
-from routes import search, collections, products
+from routes import search, collections, products, auth
 
 app = FastAPI(
-    title="SnapList API",
+    title="Iris API",
     description="Görsel ürün arama ve koleksiyon yönetimi backend'i.",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs" if settings.APP_ENV == "development" else None,
     redoc_url=None,
 )
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 # Router'ları kaydet
+app.include_router(auth.router)
 app.include_router(search.router)
 app.include_router(collections.router)
 app.include_router(products.router)
