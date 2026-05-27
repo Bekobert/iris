@@ -1,21 +1,13 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 from uuid import UUID
 from core.database import get_supabase
+from core.auth import require_user
 from models.schemas import ProductSaveRequest, ProductSaveResponse
 
 router = APIRouter(prefix="/products", tags=["products"])
 
 FREE_TIER_LIMIT = 20
-
-
-def _require_user(x_user_id: Optional[str]) -> UUID:
-    if not x_user_id:
-        raise HTTPException(status_code=401, detail="X-User-Id header zorunlu.")
-    try:
-        return UUID(x_user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Geçersiz X-User-Id formatı.")
 
 
 def _get_or_create_default_collection(db, user_id: UUID) -> UUID:
@@ -30,7 +22,6 @@ def _get_or_create_default_collection(db, user_id: UUID) -> UUID:
     if res.data:
         return UUID(res.data[0]["id"])
 
-    # Yoksa oluştur
     new = (
         db.table("collections")
         .insert({"user_id": str(user_id), "name": "Koleksiyonum", "is_default": True})
@@ -42,13 +33,8 @@ def _get_or_create_default_collection(db, user_id: UUID) -> UUID:
 @router.post("/save", response_model=ProductSaveResponse, status_code=201)
 async def save_product(
     payload: ProductSaveRequest,
-    x_user_id: Optional[str] = Header(None),
+    user_id: UUID = Depends(require_user),
 ):
-    """
-    Ürünü koleksiyona kaydeder.
-    Free tier'da 20 ürün sınırı uygulanır.
-    """
-    user_id = _require_user(x_user_id)
     db = get_supabase()
 
     # Kullanıcı tier kontrolü
@@ -72,9 +58,7 @@ async def save_product(
                 detail=f"Free planda en fazla {FREE_TIER_LIMIT} ürün kaydedebilirsiniz. Pro'ya geçin.",
             )
 
-    # Hedef koleksiyonu belirle
     if payload.collection_id:
-        # Koleksiyon bu kullanıcıya ait mi?
         col_check = (
             db.table("collections")
             .select("id")
@@ -88,7 +72,6 @@ async def save_product(
     else:
         collection_id = _get_or_create_default_collection(db, user_id)
 
-    # Ürünü kaydet
     insert_data = {
         "user_id": str(user_id),
         "collection_id": str(collection_id),
@@ -117,10 +100,8 @@ async def save_product(
 @router.get("", tags=["products"])
 async def list_saved_products(
     collection_id: Optional[UUID] = None,
-    x_user_id: Optional[str] = Header(None),
+    user_id: UUID = Depends(require_user),
 ):
-    """Kullanıcının kayıtlı ürünlerini döner. Opsiyonel olarak koleksiyona göre filtreler."""
-    user_id = _require_user(x_user_id)
     db = get_supabase()
 
     query = (
@@ -140,10 +121,8 @@ async def list_saved_products(
 @router.delete("/{product_id}", status_code=204)
 async def delete_product(
     product_id: UUID,
-    x_user_id: Optional[str] = Header(None),
+    user_id: UUID = Depends(require_user),
 ):
-    """Kaydedilmiş ürünü siler."""
-    user_id = _require_user(x_user_id)
     db = get_supabase()
 
     check = (
