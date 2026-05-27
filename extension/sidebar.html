@@ -23,6 +23,7 @@
       padding: 14px 16px 10px;
       border-bottom: 1px solid rgba(255,255,255,0.07);
       flex-shrink: 0;
+      gap: 8px;
     }
 
     .logo {
@@ -30,7 +31,23 @@
       font-weight: 600;
       letter-spacing: 0.04em;
       color: #fff;
+      flex-shrink: 0;
     }
+
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+
+    #collectionBtn {
+      background: rgba(255,255,255,0.06);
+      color: #aaa;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    #collectionBtn:hover { background: rgba(255,255,255,0.1); color: #e8e8ec; }
 
     #snapBtn {
       background: #6c63ff;
@@ -52,7 +69,6 @@
       padding: 12px 12px 16px;
     }
 
-    /* States */
     .state {
       display: flex;
       flex-direction: column;
@@ -66,7 +82,6 @@
     .state-title { font-size: 15px; font-weight: 500; color: #fff; }
     .state-sub { font-size: 13px; color: #888; line-height: 1.5; }
 
-    /* Spinner */
     .spinner {
       width: 28px; height: 28px;
       border: 3px solid rgba(255,255,255,0.12);
@@ -76,7 +91,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Results */
     .results-header {
       font-size: 12px;
       color: #666;
@@ -155,7 +169,6 @@
       text-align: right;
     }
 
-    /* Toast */
     #iris-toast {
       position: fixed;
       bottom: 16px;
@@ -175,7 +188,10 @@
 <body>
   <header>
     <span class="logo">iris</span>
-    <button id="snapBtn">Snap</button>
+    <div class="header-actions">
+      <button id="collectionBtn">My Collection ↗</button>
+      <button id="snapBtn">Snap</button>
+    </div>
   </header>
   <div id="app"></div>
   <script src="sidebar.js"></script>
