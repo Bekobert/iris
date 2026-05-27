@@ -1,18 +1,37 @@
 // Iris — Background Service Worker
-// Handles backend communication and message routing.
+// Handles backend communication, auth token management, and message routing.
 
 const API_BASE = "http://localhost:8000";
 
-// TODO (Phase 2): replace with real auth token after JWT login is implemented.
-// For now, a hardcoded test user UUID is used so the save flow can be exercised end-to-end.
-const DEV_USER_ID = "00000000-0000-0000-0000-000000000001";
+// ── Auth helpers ──────────────────────────────────────────
 
-// Open side panel when extension icon is clicked
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ tabId: tab.id });
+async function getAccessToken() {
+  const { iris_access_token } = await chrome.storage.local.get("iris_access_token");
+  return iris_access_token || null;
+}
+
+function authHeaders(token, extra = {}) {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+    ...extra,
+  };
+}
+
+// ── Extension icon click ──────────────────────────────────
+
+chrome.action.onClicked.addListener(async (tab) => {
+  const token = await getAccessToken();
+  if (!token) {
+    // Not logged in — open auth page
+    chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
+  } else {
+    chrome.sidePanel.open({ tabId: tab.id });
+  }
 });
 
-// Listen for messages from content script and sidebar
+// ── Message router ────────────────────────────────────────
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "SEARCH_IMAGE") {
     searchImage(message.imageBase64)
@@ -24,31 +43,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "SAVE_PRODUCT") {
     saveProduct(message.product)
       .then((result) => sendResponse({ success: true, data: result }))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
+      .catch((err) => sendResponse({
+        success: false,
+        error: err.message === "FREE_TIER_LIMIT" ? "FREE_TIER_LIMIT" : err.message,
+      }));
     return true;
   }
 
   if (message.type === "DELETE_PRODUCT") {
     deleteProduct(message.savedProductId)
-      .then((result) => sendResponse({ success: true, data: result }))
+      .then(() => sendResponse({ success: true }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
   }
 
-  if (message.type === "OPEN_SIDEBAR") {
-    chrome.sidePanel.open({ tabId: sender.tab.id });
-    sendResponse({ success: true });
-  }
-
   if (message.type === "CAPTURE_TAB") {
-    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "jpeg", quality: 92 }, (dataUrl) => {
-      sendResponse({ dataUrl });
-    });
+    chrome.tabs.captureVisibleTab(
+      sender.tab.windowId,
+      { format: "jpeg", quality: 92 },
+      (dataUrl) => sendResponse({ dataUrl })
+    );
     return true;
   }
 
   if (message.type === "SEARCH_RESULTS") {
+    // Relay from content script → sidebar
     chrome.runtime.sendMessage({ type: "SEARCH_RESULTS", data: message.data });
+    sendResponse({ success: true });
+  }
+
+  if (message.type === "LOGOUT") {
+    chrome.storage.local.remove([
+      "iris_access_token",
+      "iris_refresh_token",
+      "iris_user_id",
+      "iris_user_email",
+      "iris_user_tier",
+    ]);
     sendResponse({ success: true });
   }
 });
@@ -56,9 +87,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ── API calls ─────────────────────────────────────────────
 
 async function searchImage(imageBase64) {
+  const token = await getAccessToken();
   const response = await fetch(`${API_BASE}/search`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(token),
     body: JSON.stringify({ image_base64: imageBase64, count: 6 }),
   });
   if (!response.ok) throw new Error(`Search API error: ${response.status}`);
@@ -66,10 +98,9 @@ async function searchImage(imageBase64) {
 }
 
 async function saveProduct(product) {
-  // Map ProductSearchResult → ProductSaveRequest
-  // product_id is a local identifier from the adapter and is not stored in the DB.
+  const token = await getAccessToken();
   const body = {
-    collection_id: null,           // null → backend writes to default collection
+    collection_id: null,
     product_name: product.product_name,
     price: product.price ?? null,
     currency: product.currency ?? "USD",
@@ -83,26 +114,21 @@ async function saveProduct(product) {
 
   const response = await fetch(`${API_BASE}/products/save`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-User-Id": DEV_USER_ID,
-    },
+    headers: authHeaders(token),
     body: JSON.stringify(body),
   });
 
-  if (response.status === 402) {
-    // Free tier limit reached — surface a specific error the sidebar can handle
-    throw new Error("FREE_TIER_LIMIT");
-  }
-
+  if (response.status === 402) throw new Error("FREE_TIER_LIMIT");
+  if (response.status === 401) throw new Error("UNAUTHORIZED");
   if (!response.ok) throw new Error(`Save API error: ${response.status}`);
   return await response.json();
 }
 
 async function deleteProduct(savedProductId) {
+  const token = await getAccessToken();
   const response = await fetch(`${API_BASE}/products/${savedProductId}`, {
     method: "DELETE",
-    headers: { "X-User-Id": DEV_USER_ID },
+    headers: authHeaders(token),
   });
   if (!response.ok) throw new Error(`Delete API error: ${response.status}`);
 }
