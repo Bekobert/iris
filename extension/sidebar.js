@@ -2,6 +2,7 @@
 
 const app = document.getElementById("app");
 const snapBtn = document.getElementById("snapBtn");
+const collectionBtn = document.getElementById("collectionBtn");
 
 // ── State ─────────────────────────────────────────────────
 let state = "idle"; // idle | loading | results | error
@@ -106,7 +107,6 @@ function toggleSave(product, btn) {
   const alreadySaved = !!savedMap[product.product_id];
 
   if (alreadySaved) {
-    // Optimistic UI update
     const savedProductId = savedMap[product.product_id];
     delete savedMap[product.product_id];
     persistSavedMap();
@@ -114,13 +114,11 @@ function toggleSave(product, btn) {
     btn.textContent = "♡";
     btn.title = "Add to collection";
 
-    // Fire delete request (best-effort, no UI rollback for now)
     chrome.runtime.sendMessage(
       { type: "DELETE_PRODUCT", savedProductId },
       () => {}
     );
   } else {
-    // Optimistic UI update — mark as saving
     btn.disabled = true;
     btn.textContent = "…";
 
@@ -128,14 +126,12 @@ function toggleSave(product, btn) {
       btn.disabled = false;
 
       if (response && response.success) {
-        // Store the Supabase UUID so we can delete it later
         savedMap[product.product_id] = response.data.saved_product_id;
         persistSavedMap();
         btn.classList.add("saved");
         btn.textContent = "♥";
         btn.title = "Saved";
       } else {
-        // Revert
         btn.textContent = "♡";
         btn.title = "Add to collection";
 
@@ -162,6 +158,13 @@ function showToast(message, type = "info") {
 
   setTimeout(() => toast.remove(), 3500);
 }
+
+// ── Collection button ─────────────────────────────────────
+collectionBtn.addEventListener("click", () => {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL("collection.html"),
+  });
+});
 
 // ── Snap button ───────────────────────────────────────────
 snapBtn.addEventListener("click", () => {
@@ -190,7 +193,6 @@ chrome.runtime.onMessage.addListener((message) => {
     render();
   }
 
-  // User pressed Esc on the crop overlay — return to idle
   if (message.type === "SEARCH_CANCELLED") {
     state = "idle";
     render();
