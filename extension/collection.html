@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iris — My Collection</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f11;
+      color: #e8e8ec;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,15,17,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #fff; flex-shrink: 0; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .stat-pill {
+      font-size: 12px;
+      background: rgba(108,99,255,0.15);
+      color: #a78bfa;
+      padding: 4px 10px;
+      border-radius: 99px;
+      border: 1px solid rgba(108,99,255,0.2);
+      white-space: nowrap;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      padding: 16px 24px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar input[type=search] {
+      flex: 1;
+      min-width: 180px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px;
+      color: #e8e8ec;
+      font-size: 13px;
+      padding: 7px 12px;
+      outline: none;
+    }
+    .toolbar input[type=search]:focus { border-color: #6c63ff; }
+    .toolbar input[type=search]::placeholder { color: #555; }
+
+    .filter-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px;
+      color: #aaa;
+      font-size: 12px;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    .filter-btn:hover { background: rgba(255,255,255,0.09); color: #e8e8ec; }
+    .filter-btn.active {
+      background: rgba(108,99,255,0.2);
+      border-color: rgba(108,99,255,0.4);
+      color: #a78bfa;
+    }
+
+    select.sort-select {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px;
+      color: #aaa;
+      font-size: 12px;
+      padding: 7px 10px;
+      cursor: pointer;
+      outline: none;
+    }
+    select.sort-select:focus { border-color: #6c63ff; }
+    select.sort-select option { background: #1a1a1e; }
+
+    /* ── Grid ── */
+    .grid-wrap { padding: 0 24px 40px; }
+
+    #product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .product-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      position: relative;
+    }
+    .product-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(108,99,255,0.35);
+    }
+
+    .product-img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      background: #1a1a22;
+      display: block;
+    }
+
+    .card-body { padding: 10px 10px 12px; }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #e8e8ec;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+
+    .card-store { font-size: 11px; color: #666; margin-bottom: 5px; }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-price { font-size: 13px; font-weight: 600; color: #a78bfa; }
+    .no-price { color: #444; font-size: 11px; }
+
+    .card-date { font-size: 10px; color: #444; }
+
+    .delete-btn {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      background: rgba(0,0,0,0.55);
+      border: none;
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.12s;
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .product-card:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { background: rgba(220,50,50,0.7); color: #fff; }
+
+    .category-badge {
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      background: rgba(0,0,0,0.55);
+      color: #ccc;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 99px;
+    }
+
+    /* ── States ── */
+    .state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 320px;
+      gap: 12px;
+      text-align: center;
+    }
+    .state-icon { font-size: 42px; }
+    .state-title { font-size: 16px; font-weight: 500; color: #fff; }
+    .state-sub { font-size: 13px; color: #666; line-height: 1.6; max-width: 260px; }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #6c63ff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 9px 16px;
+      border-radius: 7px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 9999;
+      display: none;
+    }
+    #toast.show { display: block; }
+    #toast.info  { background: #1e1e2e; color: #a78bfa; border: 1px solid #a78bfa44; }
+    #toast.error { background: #2a0a0a; color: #f87171; border: 1px solid #f8717144; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <span class="logo">iris</span>
+    <div class="header-right">
+      <span class="stat-pill" id="stat-count">0 products</span>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <input type="search" id="search-input" placeholder="Search products..." />
+    <button class="filter-btn active" data-cat="all">All</button>
+    <button class="filter-btn" data-cat="Footwear">Footwear</button>
+    <button class="filter-btn" data-cat="Tops">Tops</button>
+    <button class="filter-btn" data-cat="Bottoms">Bottoms</button>
+    <button class="filter-btn" data-cat="Accessories">Accessories</button>
+    <select class="sort-select" id="sort-select">
+      <option value="date_desc">Newest first</option>
+      <option value="date_asc">Oldest first</option>
+      <option value="price_asc">Price: low to high</option>
+      <option value="price_desc">Price: high to low</option>
+      <option value="name_asc">Name A–Z</option>
+    </select>
+  </div>
+
+  <div class="grid-wrap">
+    <div id="product-grid"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="collection.js"></script>
+</body>
+</html>
