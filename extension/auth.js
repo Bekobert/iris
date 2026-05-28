@@ -76,8 +76,10 @@ submitBtn.addEventListener('click', async () => {
       iris_user_tier:     data.tier,
     });
 
-    // Close auth tab — background will open sidebar
-    window.close();
+    // Ask background to open the sidebar, then close this tab
+    chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR' }, () => {
+      window.close();
+    });
 
   } catch (err) {
     showError('Cannot reach the backend. Make sure the server is running.');

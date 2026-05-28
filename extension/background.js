@@ -18,6 +18,16 @@ function authHeaders(token, extra = {}) {
   };
 }
 
+// ── Open sidebar helper ───────────────────────────────────
+
+async function openSidebar() {
+  // Get the last focused window's active tab to open the side panel against
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (tab) {
+    await chrome.sidePanel.open({ tabId: tab.id });
+  }
+}
+
 // ── Extension icon click ──────────────────────────────────
 
 chrome.action.onClicked.addListener(async (tab) => {
@@ -33,6 +43,13 @@ chrome.action.onClicked.addListener(async (tab) => {
 // ── Message router ────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "OPEN_SIDEBAR") {
+    openSidebar()
+      .then(() => sendResponse({ success: true }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true; // keep channel open for async response
+  }
+
   if (message.type === "SEARCH_IMAGE") {
     searchImage(message.imageBase64)
       .then((results) => sendResponse({ success: true, data: results }))
