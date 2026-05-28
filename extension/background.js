@@ -19,12 +19,29 @@ function authHeaders(token, extra = {}) {
 }
 
 // ── Open sidebar helper ───────────────────────────────────
+// chrome.sidePanel.open() requires a real user-visible tab.
+// We try multiple strategies to find one.
 
 async function openSidebar() {
-  // Get the last focused window's active tab to open the side panel against
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  // Strategy 1: active tab in last focused normal window
+  let [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: "normal" });
+
+  // Strategy 2: any active tab across all windows
+  if (!tab) {
+    const tabs = await chrome.tabs.query({ active: true, windowType: "normal" });
+    tab = tabs[0];
+  }
+
+  // Strategy 3: any tab at all
+  if (!tab) {
+    const tabs = await chrome.tabs.query({ windowType: "normal" });
+    tab = tabs[0];
+  }
+
   if (tab) {
     await chrome.sidePanel.open({ tabId: tab.id });
+  } else {
+    console.warn("Iris: could not find a tab to open side panel against.");
   }
 }
 
@@ -47,7 +64,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     openSidebar()
       .then(() => sendResponse({ success: true }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true; // keep channel open for async response
+    return true;
   }
 
   if (message.type === "SEARCH_IMAGE") {
