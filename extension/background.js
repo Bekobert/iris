@@ -19,14 +19,19 @@ function authHeaders(token, extra = {}) {
 }
 
 // ── Extension icon click ──────────────────────────────────
+// IMPORTANT: sidePanel.open() must be called BEFORE any await,
+// otherwise Chrome loses the user gesture context.
 
-chrome.action.onClicked.addListener(async (tab) => {
-  const token = await getAccessToken();
-  if (!token) {
-    chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
-  } else {
-    chrome.sidePanel.open({ tabId: tab.id });
-  }
+chrome.action.onClicked.addListener((tab) => {
+  // Open side panel immediately (still within user gesture context)
+  chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+
+  // Then check token — if not logged in, close panel and open auth page
+  getAccessToken().then((token) => {
+    if (!token) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
+    }
+  });
 });
 
 // ── Message router ────────────────────────────────────────
