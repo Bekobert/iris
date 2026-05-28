@@ -51,10 +51,12 @@ submitBtn.addEventListener('click', async () => {
       body: JSON.stringify({ email, password }),
     });
 
+    console.log('[Iris] fetch status:', res.status, res.ok);
+
     const data = await res.json();
+    console.log('[Iris] response data:', data);
 
     if (!res.ok) {
-      // Signup — email confirmation required
       if (res.status === 400 && data.detail && data.detail.includes('e-posta')) {
         showInfo('Account created! Check your email to confirm, then sign in.');
         submitBtn.disabled = false;
@@ -67,7 +69,7 @@ submitBtn.addEventListener('click', async () => {
       return;
     }
 
-    // Save token + user info
+    console.log('[Iris] saving to storage...');
     await chrome.storage.local.set({
       iris_access_token:  data.access_token,
       iris_refresh_token: data.refresh_token,
@@ -75,12 +77,12 @@ submitBtn.addEventListener('click', async () => {
       iris_user_email:    data.email,
       iris_user_tier:     data.tier,
     });
+    console.log('[Iris] storage saved, showing success...');
 
-    // chrome.sidePanel.open() can only be called from a direct user gesture
-    // (icon click in background), not from a message. Show success instead.
     showSuccess(data.email);
 
   } catch (err) {
+    console.error('[Iris] caught error:', err);
     showError('Cannot reach the backend. Make sure the server is running.');
     submitBtn.disabled = false;
     submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
