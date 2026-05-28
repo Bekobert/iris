@@ -76,10 +76,9 @@ submitBtn.addEventListener('click', async () => {
       iris_user_tier:     data.tier,
     });
 
-    // Ask background to open the sidebar, then close this tab
-    chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR' }, () => {
-      window.close();
-    });
+    // chrome.sidePanel.open() can only be called from a direct user gesture
+    // (icon click in background), not from a message. Show success instead.
+    showSuccess(data.email);
 
   } catch (err) {
     showError('Cannot reach the backend. Make sure the server is running.');
@@ -87,6 +86,24 @@ submitBtn.addEventListener('click', async () => {
     submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
   }
 });
+
+// ── Success screen ────────────────────────────────────────
+function showSuccess(email) {
+  document.querySelector('.auth-box').innerHTML = `
+    <div style="text-align:center; padding: 32px 16px;">
+      <div style="font-size:48px; margin-bottom:16px;">👁️</div>
+      <div style="font-size:18px; font-weight:600; margin-bottom:8px; color:#1a1a2e;">
+        Welcome to Iris!
+      </div>
+      <div style="font-size:13px; color:#666; margin-bottom:24px;">
+        Signed in as <strong>${email}</strong>
+      </div>
+      <div style="font-size:13px; color:#444; background:#f5f5ff; border-radius:10px; padding:14px;">
+        Click the <strong>Iris icon</strong> in your toolbar to open the sidebar.
+      </div>
+    </div>
+  `;
+}
 
 // ── Helpers ───────────────────────────────────────────────
 function showError(msg) {
