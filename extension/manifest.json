@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Iris",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Visual product search — snap any product, find where to buy it.",
 
   "permissions": [
@@ -30,7 +30,13 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["content.js", "collection.html", "collection.js"],
+      "resources": [
+        "content.js",
+        "auth.html",
+        "auth.js",
+        "collection.html",
+        "collection.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]
