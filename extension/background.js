@@ -18,39 +18,11 @@ function authHeaders(token, extra = {}) {
   };
 }
 
-// ── Open sidebar helper ───────────────────────────────────
-// chrome.sidePanel.open() requires a real user-visible tab.
-// We try multiple strategies to find one.
-
-async function openSidebar() {
-  // Strategy 1: active tab in last focused normal window
-  let [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: "normal" });
-
-  // Strategy 2: any active tab across all windows
-  if (!tab) {
-    const tabs = await chrome.tabs.query({ active: true, windowType: "normal" });
-    tab = tabs[0];
-  }
-
-  // Strategy 3: any tab at all
-  if (!tab) {
-    const tabs = await chrome.tabs.query({ windowType: "normal" });
-    tab = tabs[0];
-  }
-
-  if (tab) {
-    await chrome.sidePanel.open({ tabId: tab.id });
-  } else {
-    console.warn("Iris: could not find a tab to open side panel against.");
-  }
-}
-
 // ── Extension icon click ──────────────────────────────────
 
 chrome.action.onClicked.addListener(async (tab) => {
   const token = await getAccessToken();
   if (!token) {
-    // Not logged in — open auth page
     chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
   } else {
     chrome.sidePanel.open({ tabId: tab.id });
@@ -60,13 +32,6 @@ chrome.action.onClicked.addListener(async (tab) => {
 // ── Message router ────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "OPEN_SIDEBAR") {
-    openSidebar()
-      .then(() => sendResponse({ success: true }))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
   if (message.type === "SEARCH_IMAGE") {
     searchImage(message.imageBase64)
       .then((results) => sendResponse({ success: true, data: results }))
@@ -101,7 +66,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "SEARCH_RESULTS") {
-    // Relay from content script → sidebar
     chrome.runtime.sendMessage({ type: "SEARCH_RESULTS", data: message.data });
     sendResponse({ success: true });
   }
