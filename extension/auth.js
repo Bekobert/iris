@@ -51,10 +51,7 @@ submitBtn.addEventListener('click', async () => {
       body: JSON.stringify({ email, password }),
     });
 
-    console.log('[Iris] fetch status:', res.status, res.ok);
-
     const data = await res.json();
-    console.log('[Iris] response data:', data);
 
     if (!res.ok) {
       if (res.status === 400 && data.detail && data.detail.includes('e-posta')) {
@@ -69,7 +66,6 @@ submitBtn.addEventListener('click', async () => {
       return;
     }
 
-    console.log('[Iris] saving to storage...');
     await chrome.storage.local.set({
       iris_access_token:  data.access_token,
       iris_refresh_token: data.refresh_token,
@@ -77,12 +73,11 @@ submitBtn.addEventListener('click', async () => {
       iris_user_email:    data.email,
       iris_user_tier:     data.tier,
     });
-    console.log('[Iris] storage saved, showing success...');
 
     showSuccess(data.email);
 
   } catch (err) {
-    console.error('[Iris] caught error:', err);
+    console.error('[Iris] auth error:', err);
     showError('Cannot reach the backend. Make sure the server is running.');
     submitBtn.disabled = false;
     submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
@@ -91,16 +86,17 @@ submitBtn.addEventListener('click', async () => {
 
 // ── Success screen ────────────────────────────────────────
 function showSuccess(email) {
-  document.querySelector('.auth-box').innerHTML = `
-    <div style="text-align:center; padding: 32px 16px;">
+  // .card is the wrapper div in auth.html
+  document.querySelector('.card').innerHTML = `
+    <div style="text-align:center; padding: 16px 0;">
       <div style="font-size:48px; margin-bottom:16px;">👁️</div>
-      <div style="font-size:18px; font-weight:600; margin-bottom:8px; color:#1a1a2e;">
+      <div style="font-size:18px; font-weight:600; margin-bottom:8px; color:#fff;">
         Welcome to Iris!
       </div>
-      <div style="font-size:13px; color:#666; margin-bottom:24px;">
-        Signed in as <strong>${email}</strong>
+      <div style="font-size:13px; color:#888; margin-bottom:24px;">
+        Signed in as <strong style="color:#a78bfa">${email}</strong>
       </div>
-      <div style="font-size:13px; color:#444; background:#f5f5ff; border-radius:10px; padding:14px;">
+      <div style="font-size:13px; color:#ccc; background:rgba(255,255,255,0.05); border-radius:10px; padding:14px; line-height:1.6;">
         Click the <strong>Iris icon</strong> in your toolbar to open the sidebar.
       </div>
     </div>
