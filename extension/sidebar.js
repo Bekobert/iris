@@ -102,7 +102,7 @@ function render() {
   }
 }
 
-// ── Save / Unsave ─────────────────────────────────────────
+// ── Save / Unsave ─────────────────────────────────────────────
 function toggleSave(product, btn) {
   const alreadySaved = !!savedMap[product.product_id];
 
@@ -159,8 +159,7 @@ function showToast(message, type = "info") {
   setTimeout(() => toast.remove(), 3500);
 }
 
-// ── Collection button ─────────────────────────────────────
-// Opens collection in a new tab, then closes the sidebar.
+// ── Collection button ───────────────────────────────────────
 collectionBtn.addEventListener("click", () => {
   chrome.tabs.create(
     { url: chrome.runtime.getURL("collection.html") },
@@ -168,22 +167,52 @@ collectionBtn.addEventListener("click", () => {
   );
 });
 
-// ── Snap button ───────────────────────────────────────────
+// ── Snap button ───────────────────────────────────────────────
 snapBtn.addEventListener("click", () => {
   state = "loading";
   render();
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.scripting.executeScript(
-      { target: { tabId: tabs[0].id }, files: ["content.js"] },
-      () => {
-        chrome.tabs.sendMessage(tabs[0].id, { type: "ACTIVATE_CROP" });
-      }
-    );
+  // Use lastFocusedWindow + windowType normal to correctly target
+  // the web page tab, not the sidebar's own window.
+  chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: "normal" }, (tabs) => {
+    if (!tabs || !tabs[0]) {
+      // Fallback: any active tab
+      chrome.tabs.query({ active: true }, (allTabs) => {
+        const tab = allTabs.find(t => !t.url.startsWith("chrome"));
+        if (tab) injectAndCrop(tab.id);
+        else { state = "error"; render(); }
+      });
+      return;
+    }
+    injectAndCrop(tabs[0].id);
   });
 });
 
-// ── Listen for messages from background ───────────────────
+function injectAndCrop(tabId) {
+  chrome.scripting.executeScript(
+    { target: { tabId }, files: ["content.js"] },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.error("[Iris] inject error:", chrome.runtime.lastError.message);
+        state = "error";
+        render();
+        return;
+      }
+      // Small delay to ensure content script is ready
+      setTimeout(() => {
+        chrome.tabs.sendMessage(tabId, { type: "ACTIVATE_CROP" }, (res) => {
+          if (chrome.runtime.lastError) {
+            console.error("[Iris] sendMessage error:", chrome.runtime.lastError.message);
+            state = "error";
+            render();
+          }
+        });
+      }, 100);
+    }
+  );
+}
+
+// ── Listen for messages from background ─────────────────────
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "SEARCH_RESULTS") {
     if (message.data) {
@@ -201,5 +230,5 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// ── Initial render ────────────────────────────────────────
+// ── Initial render ────────────────────────────────────────────
 render();
