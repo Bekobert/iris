@@ -2,8 +2,7 @@
 
 const API_BASE = "http://localhost:8000";
 
-// ── Track last active injectable tab ──────────────────────────
-let lastTabId = null;
+// ── Track last active injectable tab (session storage survives SW sleep) ──
 
 chrome.tabs.onActivated.addListener(({ tabId }) => {
   chrome.tabs.get(tabId, (tab) => {
@@ -15,18 +14,21 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
       !tab.url.startsWith("about") &&
       !tab.url.startsWith("edge")
     ) {
-      lastTabId = tabId;
+      chrome.storage.session.set({ lastTabId: tabId });
     }
   });
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.active && tab.url &&
+  if (
+    changeInfo.status === "complete" &&
+    tab.active &&
+    tab.url &&
     !tab.url.startsWith("chrome") &&
     !tab.url.startsWith("chrome-extension") &&
     !tab.url.startsWith("about")
   ) {
-    lastTabId = tabId;
+    chrome.storage.session.set({ lastTabId: tabId });
   }
 });
 
@@ -60,7 +62,9 @@ chrome.action.onClicked.addListener((tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_LAST_TAB") {
-    sendResponse({ tabId: lastTabId });
+    chrome.storage.session.get("lastTabId", (result) => {
+      sendResponse({ tabId: result.lastTabId || null });
+    });
     return true;
   }
 
