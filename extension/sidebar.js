@@ -146,18 +146,9 @@ snapBtn.addEventListener("click", () => {
   state = "loading";
   render();
 
-  // Query ALL active tabs across all windows, pick the first injectable one.
-  // Side panel shares windowId with the page, so active: true returns both
-  // the sidebar and the page tab. We filter out non-injectable URLs.
-  chrome.tabs.query({ active: true }, (tabs) => {
-    const tab = tabs && tabs.find(t =>
-      t.url &&
-      !t.url.startsWith("chrome") &&
-      !t.url.startsWith("chrome-extension") &&
-      !t.url.startsWith("about") &&
-      !t.url.startsWith("edge")
-    );
-    if (!tab) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs && tabs[0];
+    if (!tab || tab.url.startsWith("chrome") || tab.url.startsWith("chrome-extension")) {
       showToast("Please open a web page first.", "warn");
       state = "idle";
       render();
@@ -189,8 +180,14 @@ function injectAndCrop(tabId) {
   );
 }
 
-// ── Listen for messages from background ─────────────────────
+// ── Tab change: reload sidebar so it re-attaches to new tab ─────────
 chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "TAB_CHANGED") {
+    // Reset state and reload so sidebar re-attaches to new active tab
+    window.location.reload();
+    return;
+  }
+
   if (message.type === "SEARCH_RESULTS") {
     if (message.data) {
       currentResults = message.data;

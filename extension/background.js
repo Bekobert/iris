@@ -2,8 +2,21 @@
 
 const API_BASE = "http://localhost:8000";
 
-// ── Set panel behavior: open on action click, window-level ──────────
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+// ── Reload sidebar when user switches tabs ─────────────────────
+chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError) return;
+    if (
+      tab.url &&
+      !tab.url.startsWith("chrome") &&
+      !tab.url.startsWith("chrome-extension") &&
+      !tab.url.startsWith("about")
+    ) {
+      // Reload the side panel so it re-attaches to the new active tab
+      chrome.sidePanel.setOptions({ path: "sidebar.html", enabled: true });
+    }
+  });
+});
 
 // ── Auth helpers ──────────────────────────────────────────
 
@@ -21,28 +34,19 @@ function authHeaders(token, extra = {}) {
 }
 
 // ── Extension icon click ──────────────────────────────────
-// openPanelOnActionClick handles opening, so we only handle auth redirect here.
 
-chrome.action.onClicked.addListener(async (tab) => {
-  const token = await getAccessToken();
-  if (!token) {
-    // Not logged in — open auth page instead of panel
-    chrome.sidePanel.setOptions({ enabled: false });
-    chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
-  } else {
-    chrome.sidePanel.setOptions({ enabled: true });
-  }
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+  getAccessToken().then((token) => {
+    if (!token) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
+    }
+  });
 });
 
 // ── Message router ────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "LOGIN_SUCCESS") {
-    // After login, re-enable the panel
-    chrome.sidePanel.setOptions({ enabled: true });
-    sendResponse({ success: true });
-  }
-
   if (message.type === "SEARCH_IMAGE") {
     searchImage(message.imageBase64)
       .then((results) => sendResponse({ success: true, data: results }))
