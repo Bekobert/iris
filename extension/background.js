@@ -2,8 +2,8 @@
 
 const API_BASE = "http://localhost:8000";
 
-// ── Reload sidebar when user switches tabs ─────────────────────
-chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+// ── Notify sidebar when user switches tabs ─────────────────────
+chrome.tabs.onActivated.addListener(({ tabId }) => {
   chrome.tabs.get(tabId, (tab) => {
     if (chrome.runtime.lastError) return;
     if (
@@ -12,8 +12,8 @@ chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
       !tab.url.startsWith("chrome-extension") &&
       !tab.url.startsWith("about")
     ) {
-      // Reload the side panel so it re-attaches to the new active tab
-      chrome.sidePanel.setOptions({ path: "sidebar.html", enabled: true });
+      // Tell sidebar to reload so it re-attaches to the new active tab
+      chrome.runtime.sendMessage({ type: "TAB_CHANGED" }).catch(() => {});
     }
   });
 });
