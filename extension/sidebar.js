@@ -5,15 +5,33 @@ const snapBtn = document.getElementById("snapBtn");
 const collectionBtn = document.getElementById("collectionBtn");
 
 // ── State ─────────────────────────────────────────────────
-let state = "idle"; // idle | loading | results | error
+let state = "idle";
 let currentResults = [];
-
-// savedMap: product_id (adapter) → saved_product_id (Supabase UUID)
-// Persisted in localStorage so saves survive sidebar close/reopen.
 let savedMap = JSON.parse(localStorage.getItem("iris_saved_map") || "{}");
 
 function persistSavedMap() {
   localStorage.setItem("iris_saved_map", JSON.stringify(savedMap));
+}
+
+// ── Find target tab ───────────────────────────────────────────
+// The sidebar lives in the same window as the web page (Chrome side panel).
+// We find the active tab in any normal window that is NOT a chrome:// or
+// extension:// page and NOT the sidebar itself.
+async function findTargetTab() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ windowType: "normal" }, (tabs) => {
+      // Prefer active tabs first, then any injectable tab
+      const injectable = tabs.filter(t =>
+        t.url &&
+        !t.url.startsWith("chrome") &&
+        !t.url.startsWith("chrome-extension") &&
+        !t.url.startsWith("about") &&
+        !t.url.startsWith("edge")
+      );
+      const active = injectable.find(t => t.active);
+      resolve(active || injectable[0] || null);
+    });
+  });
 }
 
 // ── Render ────────────────────────────────────────────────
@@ -27,7 +45,6 @@ function render() {
       </div>`;
     return;
   }
-
   if (state === "loading") {
     app.innerHTML = `
       <div class="state">
@@ -37,7 +54,6 @@ function render() {
       </div>`;
     return;
   }
-
   if (state === "error") {
     app.innerHTML = `
       <div class="state">
@@ -47,15 +63,11 @@ function render() {
       </div>`;
     return;
   }
-
   if (state === "results") {
     const cards = currentResults.results.map((p) => {
       const isSaved = !!savedMap[p.product_id];
       const score = Math.round(p.similarity_score * 100);
-      const price = p.price != null
-        ? `${p.currency} ${p.price.toFixed(2)}`
-        : null;
-
+      const price = p.price != null ? `${p.currency} ${p.price.toFixed(2)}` : null;
       return `
         <div class="product-card" data-url="${p.store_url}" data-id="${p.product_id}">
           <img class="product-img" src="${p.image_url}" alt="${p.product_name}"
@@ -65,8 +77,7 @@ function render() {
             <div class="product-store">${p.store_name}</div>
             ${price
               ? `<div class="product-price">${price}</div>`
-              : `<div class="product-price no-price">No price available</div>`
-            }
+              : `<div class="product-price no-price">No price available</div>`}
           </div>
           <span class="score-badge">${score}%</span>
           <button class="save-btn ${isSaved ? "saved" : ""}"
@@ -77,21 +88,16 @@ function render() {
           </button>
         </div>`;
     }).join("");
-
     app.innerHTML = `
       <div class="results-header">${currentResults.total} results found</div>
       <div class="product-list">${cards}</div>
       <div class="query-id">Query: ${currentResults.query_id}</div>`;
-
-    // Card click — open store page
     app.querySelectorAll(".product-card").forEach((card) => {
       card.addEventListener("click", (e) => {
         if (e.target.closest(".save-btn")) return;
         chrome.tabs.create({ url: card.dataset.url });
       });
     });
-
-    // Save button
     app.querySelectorAll(".save-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -105,7 +111,6 @@ function render() {
 // ── Save / Unsave ─────────────────────────────────────────────
 function toggleSave(product, btn) {
   const alreadySaved = !!savedMap[product.product_id];
-
   if (alreadySaved) {
     const savedProductId = savedMap[product.product_id];
     delete savedMap[product.product_id];
@@ -113,18 +118,12 @@ function toggleSave(product, btn) {
     btn.classList.remove("saved");
     btn.textContent = "♡";
     btn.title = "Add to collection";
-
-    chrome.runtime.sendMessage(
-      { type: "DELETE_PRODUCT", savedProductId },
-      () => {}
-    );
+    chrome.runtime.sendMessage({ type: "DELETE_PRODUCT", savedProductId }, () => {});
   } else {
     btn.disabled = true;
     btn.textContent = "…";
-
     chrome.runtime.sendMessage({ type: "SAVE_PRODUCT", product }, (response) => {
       btn.disabled = false;
-
       if (response && response.success) {
         savedMap[product.product_id] = response.data.saved_product_id;
         persistSavedMap();
@@ -134,7 +133,6 @@ function toggleSave(product, btn) {
       } else {
         btn.textContent = "♡";
         btn.title = "Add to collection";
-
         if (response && response.error === "FREE_TIER_LIMIT") {
           showToast("Free plan limit reached (20 products). Upgrade to Pro.", "warn");
         } else {
@@ -149,13 +147,11 @@ function toggleSave(product, btn) {
 function showToast(message, type = "info") {
   const existing = document.getElementById("iris-toast");
   if (existing) existing.remove();
-
   const toast = document.createElement("div");
   toast.id = "iris-toast";
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
   document.body.appendChild(toast);
-
   setTimeout(() => toast.remove(), 3500);
 }
 
@@ -168,24 +164,19 @@ collectionBtn.addEventListener("click", () => {
 });
 
 // ── Snap button ───────────────────────────────────────────────
-snapBtn.addEventListener("click", () => {
+snapBtn.addEventListener("click", async () => {
   state = "loading";
   render();
 
-  // Use lastFocusedWindow + windowType normal to correctly target
-  // the web page tab, not the sidebar's own window.
-  chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: "normal" }, (tabs) => {
-    if (!tabs || !tabs[0]) {
-      // Fallback: any active tab
-      chrome.tabs.query({ active: true }, (allTabs) => {
-        const tab = allTabs.find(t => !t.url.startsWith("chrome"));
-        if (tab) injectAndCrop(tab.id);
-        else { state = "error"; render(); }
-      });
-      return;
-    }
-    injectAndCrop(tabs[0].id);
-  });
+  const tab = await findTargetTab();
+  if (!tab) {
+    showToast("Please open a web page first.", "warn");
+    state = "idle";
+    render();
+    return;
+  }
+
+  injectAndCrop(tab.id);
 });
 
 function injectAndCrop(tabId) {
@@ -194,16 +185,16 @@ function injectAndCrop(tabId) {
     () => {
       if (chrome.runtime.lastError) {
         console.error("[Iris] inject error:", chrome.runtime.lastError.message);
-        state = "error";
+        showToast("Cannot snap on this page. Try a regular website.", "warn");
+        state = "idle";
         render();
         return;
       }
-      // Small delay to ensure content script is ready
       setTimeout(() => {
         chrome.tabs.sendMessage(tabId, { type: "ACTIVATE_CROP" }, (res) => {
           if (chrome.runtime.lastError) {
             console.error("[Iris] sendMessage error:", chrome.runtime.lastError.message);
-            state = "error";
+            state = "idle";
             render();
           }
         });
@@ -223,7 +214,6 @@ chrome.runtime.onMessage.addListener((message) => {
     }
     render();
   }
-
   if (message.type === "SEARCH_CANCELLED") {
     state = "idle";
     render();
