@@ -1,7 +1,34 @@
 // Iris — Background Service Worker
-// Handles backend communication, auth token management, and message routing.
 
 const API_BASE = "http://localhost:8000";
+
+// ── Track last active injectable tab ──────────────────────────
+let lastTabId = null;
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError) return;
+    if (
+      tab.url &&
+      !tab.url.startsWith("chrome") &&
+      !tab.url.startsWith("chrome-extension") &&
+      !tab.url.startsWith("about") &&
+      !tab.url.startsWith("edge")
+    ) {
+      lastTabId = tabId;
+    }
+  });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab.active && tab.url &&
+    !tab.url.startsWith("chrome") &&
+    !tab.url.startsWith("chrome-extension") &&
+    !tab.url.startsWith("about")
+  ) {
+    lastTabId = tabId;
+  }
+});
 
 // ── Auth helpers ──────────────────────────────────────────
 
@@ -19,14 +46,9 @@ function authHeaders(token, extra = {}) {
 }
 
 // ── Extension icon click ──────────────────────────────────
-// IMPORTANT: sidePanel.open() must be called BEFORE any await,
-// otherwise Chrome loses the user gesture context.
 
 chrome.action.onClicked.addListener((tab) => {
-  // Open side panel immediately (still within user gesture context)
   chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
-
-  // Then check token — if not logged in, close panel and open auth page
   getAccessToken().then((token) => {
     if (!token) {
       chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
@@ -37,6 +59,11 @@ chrome.action.onClicked.addListener((tab) => {
 // ── Message router ────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "GET_LAST_TAB") {
+    sendResponse({ tabId: lastTabId });
+    return true;
+  }
+
   if (message.type === "SEARCH_IMAGE") {
     searchImage(message.imageBase64)
       .then((results) => sendResponse({ success: true, data: results }))
@@ -114,13 +141,11 @@ async function saveProduct(product) {
     category: product.category ?? null,
     source_api: product.source_api,
   };
-
   const response = await fetch(`${API_BASE}/products/save`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
-
   if (response.status === 402) throw new Error("FREE_TIER_LIMIT");
   if (response.status === 401) throw new Error("UNAUTHORIZED");
   if (!response.ok) throw new Error(`Save API error: ${response.status}`);

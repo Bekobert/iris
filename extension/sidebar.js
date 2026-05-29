@@ -4,34 +4,12 @@ const app = document.getElementById("app");
 const snapBtn = document.getElementById("snapBtn");
 const collectionBtn = document.getElementById("collectionBtn");
 
-// ── State ─────────────────────────────────────────────────
 let state = "idle";
 let currentResults = [];
 let savedMap = JSON.parse(localStorage.getItem("iris_saved_map") || "{}");
 
 function persistSavedMap() {
   localStorage.setItem("iris_saved_map", JSON.stringify(savedMap));
-}
-
-// ── Find target tab ───────────────────────────────────────────
-// The sidebar lives in the same window as the web page (Chrome side panel).
-// We find the active tab in any normal window that is NOT a chrome:// or
-// extension:// page and NOT the sidebar itself.
-async function findTargetTab() {
-  return new Promise((resolve) => {
-    chrome.tabs.query({ windowType: "normal" }, (tabs) => {
-      // Prefer active tabs first, then any injectable tab
-      const injectable = tabs.filter(t =>
-        t.url &&
-        !t.url.startsWith("chrome") &&
-        !t.url.startsWith("chrome-extension") &&
-        !t.url.startsWith("about") &&
-        !t.url.startsWith("edge")
-      );
-      const active = injectable.find(t => t.active);
-      resolve(active || injectable[0] || null);
-    });
-  });
 }
 
 // ── Render ────────────────────────────────────────────────
@@ -164,19 +142,21 @@ collectionBtn.addEventListener("click", () => {
 });
 
 // ── Snap button ───────────────────────────────────────────────
-snapBtn.addEventListener("click", async () => {
+snapBtn.addEventListener("click", () => {
   state = "loading";
   render();
 
-  const tab = await findTargetTab();
-  if (!tab) {
-    showToast("Please open a web page first.", "warn");
-    state = "idle";
-    render();
-    return;
-  }
-
-  injectAndCrop(tab.id);
+  // Ask background for the last known injectable tab
+  chrome.runtime.sendMessage({ type: "GET_LAST_TAB" }, (response) => {
+    const tabId = response && response.tabId;
+    if (!tabId) {
+      showToast("Please switch to a web page first, then press Snap.", "warn");
+      state = "idle";
+      render();
+      return;
+    }
+    injectAndCrop(tabId);
+  });
 });
 
 function injectAndCrop(tabId) {
@@ -184,7 +164,6 @@ function injectAndCrop(tabId) {
     { target: { tabId }, files: ["content.js"] },
     () => {
       if (chrome.runtime.lastError) {
-        console.error("[Iris] inject error:", chrome.runtime.lastError.message);
         showToast("Cannot snap on this page. Try a regular website.", "warn");
         state = "idle";
         render();
@@ -193,7 +172,6 @@ function injectAndCrop(tabId) {
       setTimeout(() => {
         chrome.tabs.sendMessage(tabId, { type: "ACTIVATE_CROP" }, (res) => {
           if (chrome.runtime.lastError) {
-            console.error("[Iris] sendMessage error:", chrome.runtime.lastError.message);
             state = "idle";
             render();
           }
@@ -220,5 +198,4 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// ── Initial render ────────────────────────────────────────────
 render();
