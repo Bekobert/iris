@@ -2,7 +2,7 @@
 
 const API_BASE = "http://localhost:8000";
 
-// ── Notify sidebar when user switches tabs ─────────────────────
+// ── Close sidebar when user switches tabs ─────────────────────
 chrome.tabs.onActivated.addListener(({ tabId }) => {
   chrome.tabs.get(tabId, (tab) => {
     if (chrome.runtime.lastError) return;
@@ -12,8 +12,12 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
       !tab.url.startsWith("chrome-extension") &&
       !tab.url.startsWith("about")
     ) {
-      // Tell sidebar to reload so it re-attaches to the new active tab
-      chrome.runtime.sendMessage({ type: "TAB_CHANGED" }).catch(() => {});
+      // Disable side panel — closes it if open
+      chrome.sidePanel.setOptions({ enabled: false });
+      // Re-enable immediately so icon click works again on the new tab
+      setTimeout(() => {
+        chrome.sidePanel.setOptions({ enabled: true });
+      }, 300);
     }
   });
 });
