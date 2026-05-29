@@ -146,10 +146,18 @@ snapBtn.addEventListener("click", () => {
   state = "loading";
   render();
 
-  // Get the active tab in the current window (side panel shares window with page)
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tab = tabs && tabs[0];
-    if (!tab || tab.url.startsWith("chrome") || tab.url.startsWith("chrome-extension")) {
+  // Query ALL active tabs across all windows, pick the first injectable one.
+  // Side panel shares windowId with the page, so active: true returns both
+  // the sidebar and the page tab. We filter out non-injectable URLs.
+  chrome.tabs.query({ active: true }, (tabs) => {
+    const tab = tabs && tabs.find(t =>
+      t.url &&
+      !t.url.startsWith("chrome") &&
+      !t.url.startsWith("chrome-extension") &&
+      !t.url.startsWith("about") &&
+      !t.url.startsWith("edge")
+    );
+    if (!tab) {
       showToast("Please open a web page first.", "warn");
       state = "idle";
       render();
