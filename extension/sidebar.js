@@ -146,16 +146,16 @@ snapBtn.addEventListener("click", () => {
   state = "loading";
   render();
 
-  // Ask background for the last known injectable tab
-  chrome.runtime.sendMessage({ type: "GET_LAST_TAB" }, (response) => {
-    const tabId = response && response.tabId;
-    if (!tabId) {
-      showToast("Please switch to a web page first, then press Snap.", "warn");
+  // Get the active tab in the current window (side panel shares window with page)
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs && tabs[0];
+    if (!tab || tab.url.startsWith("chrome") || tab.url.startsWith("chrome-extension")) {
+      showToast("Please open a web page first.", "warn");
       state = "idle";
       render();
       return;
     }
-    injectAndCrop(tabId);
+    injectAndCrop(tab.id);
   });
 });
 

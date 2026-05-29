@@ -2,35 +2,8 @@
 
 const API_BASE = "http://localhost:8000";
 
-// ── Track last active injectable tab (session storage survives SW sleep) ──
-
-chrome.tabs.onActivated.addListener(({ tabId }) => {
-  chrome.tabs.get(tabId, (tab) => {
-    if (chrome.runtime.lastError) return;
-    if (
-      tab.url &&
-      !tab.url.startsWith("chrome") &&
-      !tab.url.startsWith("chrome-extension") &&
-      !tab.url.startsWith("about") &&
-      !tab.url.startsWith("edge")
-    ) {
-      chrome.storage.session.set({ lastTabId: tabId });
-    }
-  });
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (
-    changeInfo.status === "complete" &&
-    tab.active &&
-    tab.url &&
-    !tab.url.startsWith("chrome") &&
-    !tab.url.startsWith("chrome-extension") &&
-    !tab.url.startsWith("about")
-  ) {
-    chrome.storage.session.set({ lastTabId: tabId });
-  }
-});
+// ── Set panel behavior: open on action click, window-level ──────────
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
 // ── Auth helpers ──────────────────────────────────────────
 
@@ -48,24 +21,26 @@ function authHeaders(token, extra = {}) {
 }
 
 // ── Extension icon click ──────────────────────────────────
+// openPanelOnActionClick handles opening, so we only handle auth redirect here.
 
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
-  getAccessToken().then((token) => {
-    if (!token) {
-      chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
-    }
-  });
+chrome.action.onClicked.addListener(async (tab) => {
+  const token = await getAccessToken();
+  if (!token) {
+    // Not logged in — open auth page instead of panel
+    chrome.sidePanel.setOptions({ enabled: false });
+    chrome.tabs.create({ url: chrome.runtime.getURL("auth.html") });
+  } else {
+    chrome.sidePanel.setOptions({ enabled: true });
+  }
 });
 
 // ── Message router ────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "GET_LAST_TAB") {
-    chrome.storage.session.get("lastTabId", (result) => {
-      sendResponse({ tabId: result.lastTabId || null });
-    });
-    return true;
+  if (message.type === "LOGIN_SUCCESS") {
+    // After login, re-enable the panel
+    chrome.sidePanel.setOptions({ enabled: true });
+    sendResponse({ success: true });
   }
 
   if (message.type === "SEARCH_IMAGE") {
