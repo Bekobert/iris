@@ -6,10 +6,17 @@ const collectionBtn = document.getElementById("collectionBtn");
 
 let state = "idle";
 let currentResults = [];
-let savedMap = JSON.parse(localStorage.getItem("iris_saved_map") || "{}");
+// Use chrome.storage.local instead of localStorage — side panel pages
+// are isolated from collection.html's localStorage context.
+let savedMap = {};
+
+async function loadSavedMap() {
+  const data = await chrome.storage.local.get("iris_saved_map");
+  savedMap = data.iris_saved_map || {};
+}
 
 function persistSavedMap() {
-  localStorage.setItem("iris_saved_map", JSON.stringify(savedMap));
+  chrome.storage.local.set({ iris_saved_map: savedMap });
 }
 
 // ── Render ────────────────────────────────────────────────
@@ -49,7 +56,7 @@ function render() {
       return `
         <div class="product-card" data-url="${p.store_url}" data-id="${p.product_id}">
           <img class="product-img" src="${p.image_url}" alt="${p.product_name}"
-               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2258%22 height=%2258%22><rect width=%2258%22 height=%2258%22 fill=%22%23F0EFFF%22/></svg>'" />
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2252%22 height=%2252%22><rect width=%2252%22 height=%2252%22 fill=%22%23F0EFFF%22/></svg>'" />
           <div class="product-info">
             <div class="product-name">${p.product_name}</div>
             <div class="product-store">${p.store_name}</div>
@@ -180,14 +187,12 @@ function injectAndCrop(tabId) {
   );
 }
 
-// ── Tab change: reload sidebar so it re-attaches to new tab ─────────
+// ── Message listener ──────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "TAB_CHANGED") {
-    // Reset state and reload so sidebar re-attaches to new active tab
     window.location.reload();
     return;
   }
-
   if (message.type === "SEARCH_RESULTS") {
     if (message.data) {
       currentResults = message.data;
@@ -203,4 +208,5 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-render();
+// ── Init ──────────────────────────────────────────────────────
+loadSavedMap().then(() => render());

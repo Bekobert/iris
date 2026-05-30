@@ -12,9 +12,7 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
       !tab.url.startsWith("chrome-extension") &&
       !tab.url.startsWith("about")
     ) {
-      // Disable side panel — closes it if open
       chrome.sidePanel.setOptions({ enabled: false });
-      // Re-enable immediately so icon click works again on the new tab
       setTimeout(() => {
         chrome.sidePanel.setOptions({ enabled: true });
       }, 300);
@@ -76,11 +74,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "CAPTURE_TAB") {
-    chrome.tabs.captureVisibleTab(
-      sender.tab.windowId,
-      { format: "jpeg", quality: 92 },
-      (dataUrl) => sendResponse({ dataUrl })
-    );
+    // sender.tab is undefined when message comes from side panel.
+    // Use the last focused normal window instead.
+    chrome.windows.getLastFocused({ windowTypes: ["normal"] }, (win) => {
+      if (chrome.runtime.lastError || !win) {
+        sendResponse({ dataUrl: null });
+        return;
+      }
+      chrome.tabs.captureVisibleTab(
+        win.id,
+        { format: "jpeg", quality: 92 },
+        (dataUrl) => {
+          if (chrome.runtime.lastError) {
+            sendResponse({ dataUrl: null });
+          } else {
+            sendResponse({ dataUrl });
+          }
+        }
+      );
+    });
     return true;
   }
 
