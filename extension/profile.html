@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iris — Profile</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f0f11; color: #e8e8ec; min-height: 100vh; }
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,15,17,0.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: #fff; }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-link {
+      font-size: 12px; padding: 5px 12px; border-radius: 7px;
+      color: #888; text-decoration: none; border: 1px solid transparent; transition: all 0.12s;
+    }
+    .nav-link:hover { color: #e8e8ec; background: rgba(255,255,255,0.06); }
+    .nav-link.active { color: #a78bfa; background: rgba(108,99,255,0.12); border-color: rgba(108,99,255,0.25); }
+    .profile-wrap { max-width: 720px; margin: 0 auto; padding: 32px 24px; }
+    .profile-header { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 28px; }
+    .profile-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(108,99,255,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 700; color: #a78bfa; flex-shrink: 0;
+    }
+    .profile-info { flex: 1; }
+    .profile-name { font-size: 20px; font-weight: 700; color: #fff; }
+    .profile-handle { font-size: 13px; color: #666; margin-top: 2px; }
+    .profile-bio { font-size: 13px; color: #aaa; margin-top: 8px; line-height: 1.5; }
+    .profile-stats { display: flex; gap: 20px; margin-top: 12px; }
+    .stat { text-align: center; }
+    .stat-val { font-size: 16px; font-weight: 700; color: #fff; }
+    .stat-label { font-size: 10px; color: #555; margin-top: 1px; }
+    .tier-badge {
+      display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+      padding: 5px 12px; border-radius: 99px; margin-top: 10px;
+    }
+    .tier-free { background: rgba(255,255,255,0.06); color: #888; border: 1px solid rgba(255,255,255,0.1); }
+    .tier-pro { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+    .tier-ultra { background: rgba(108,99,255,0.2); color: #a78bfa; border: 1px solid rgba(108,99,255,0.35); }
+    .section-title { font-size: 13px; font-weight: 600; color: #e8e8ec; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .section { margin-bottom: 28px; }
+    .outfit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .outfit-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; overflow: hidden; cursor: pointer;
+      transition: border-color 0.12s;
+    }
+    .outfit-card:hover { border-color: rgba(108,99,255,0.3); }
+    .outfit-preview {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px;
+    }
+    .mini-slot {
+      background: rgba(255,255,255,0.04); border-radius: 5px; padding: 6px;
+      display: flex; align-items: center; gap: 5px;
+      font-size: 14px;
+    }
+    .mini-slot.wide { grid-column: span 2; }
+    .mini-slot-name { font-size: 9px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .outfit-footer { padding: 8px 10px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .outfit-name { font-size: 11px; font-weight: 600; color: #ddd; }
+    .outfit-total { font-size: 10px; color: #a78bfa; }
+    .outfit-tag { font-size: 9px; padding: 2px 6px; border-radius: 99px; background: rgba(108,99,255,0.12); color: #a78bfa; }
+    .collection-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px; padding: 12px; text-align: center;
+    }
+    .stat-card-val { font-size: 20px; font-weight: 700; color: #fff; }
+    .stat-card-label { font-size: 10px; color: #555; margin-top: 2px; }
+    .upgrade-banner {
+      background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.2);
+      border-radius: 10px; padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .upgrade-text { font-size: 13px; color: #aaa; }
+    .upgrade-text strong { color: #a78bfa; }
+    .btn-upgrade {
+      background: #6c63ff; border: none; border-radius: 7px;
+      padding: 8px 18px; font-size: 12px; font-weight: 600; color: #fff;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-upgrade:hover { background: #7c74ff; }
+    .empty-state { text-align: center; padding: 32px; color: #444; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">iris</span>
+  <nav class="nav-links">
+    <a class="nav-link" href="collection.html">collection</a>
+    <a class="nav-link" href="studio.html">studio</a>
+    <a class="nav-link" href="feed.html">feed</a>
+    <a class="nav-link active" href="profile.html">profile</a>
+  </nav>
+  <div></div>
+</header>
+
+<div class="profile-wrap" id="app"></div>
+
+<script>
+const USER = {
+  name: 'Your Name',
+  handle: '@yourhandle',
+  initials: 'YN',
+  bio: 'Fashion & lifestyle. Sharing combinations I love.',
+  tier: 'free',
+  followers: 0,
+  following: 0,
+};
+
+const slotOrder = ['top', 'outer', 'bottom', 'shoes', 'bag'];
+
+function getOutfits() {
+  try {
+    const raw = localStorage.getItem('iris_outfits');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return [];
+}
+
+function getProducts() {
+  try {
+    const raw = localStorage.getItem('iris_products');
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p;
+    }
+  } catch(e) {}
+  return [];
+}
+
+function tierBadge(tier) {
+  const map = { free: ['tier-free', 'free'], pro: ['tier-pro', '&#9670; pro'], ultra: ['tier-ultra', '&#9812; ultra'] };
+  const [cls, label] = map[tier] || map.free;
+  return `<span class="tier-badge ${cls}">${label}</span>`;
+}
+
+function renderOutfitCard(o) {
+  const items = slotOrder.filter(k => o.slots && o.slots[k]);
+  const total = Object.values(o.slots || {}).filter(Boolean).reduce((s, p) => s + (Number(p.price) || 0), 0);
+  return `
+    <div class="outfit-card">
+      <div class="outfit-preview">
+        ${slotOrder.map(k => {
+          const p = o.slots?.[k];
+          const wide = k === 'bag' ? ' wide' : '';
+          if (!p) return '';
+          return `<div class="mini-slot${wide}">${p.emoji || '&#128092;'}<div class="mini-slot-name">${p.name}</div></div>`;
+        }).join('')}
+      </div>
+      <div class="outfit-footer">
+        <div>
+          <div class="outfit-name">${o.name}</div>
+          ${(o.tags || []).slice(0,1).map(t => `<span class="outfit-tag">${t}</span>`).join('')}
+        </div>
+        <div class="outfit-total">&#8378;${total.toLocaleString('tr-TR')}</div>
+      </div>
+    </div>
+  `;
+}
+
+const outfits = getOutfits();
+const products = getProducts();
+
+document.getElementById('app').innerHTML = `
+  <div class="profile-header">
+    <div class="profile-avatar">${USER.initials}</div>
+    <div class="profile-info">
+      <div class="profile-name">${USER.name}</div>
+      <div class="profile-handle">${USER.handle}</div>
+      <div class="profile-bio">${USER.bio}</div>
+      <div class="profile-stats">
+        <div class="stat"><div class="stat-val">${outfits.length}</div><div class="stat-label">outfits</div></div>
+        <div class="stat"><div class="stat-val">${products.length}</div><div class="stat-label">products</div></div>
+        <div class="stat"><div class="stat-val">${USER.followers}</div><div class="stat-label">followers</div></div>
+        <div class="stat"><div class="stat-val">${USER.following}</div><div class="stat-label">following</div></div>
+      </div>
+      ${tierBadge(USER.tier)}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="collection-stats">
+      <div class="stat-card"><div class="stat-card-val">${products.length}</div><div class="stat-card-label">saved products</div></div>
+      <div class="stat-card"><div class="stat-card-val">${outfits.length}</div><div class="stat-card-label">outfits created</div></div>
+      <div class="stat-card"><div class="stat-card-val">&#8378;${products.reduce((s,p)=>s+(Number(p.price)||0),0).toLocaleString('tr-TR')}</div><div class="stat-card-label">total value</div></div>
+    </div>
+  </div>
+
+  ${USER.tier === 'free' ? `
+  <div class="upgrade-banner" style="margin-bottom:24px">
+    <div class="upgrade-text"><strong>upgrade to ultra</strong> — publish outfits, grow followers, share your style.</div>
+    <button class="btn-upgrade">upgrade &rarr;</button>
+  </div>` : ''}
+
+  <div class="section">
+    <div class="section-title">my outfits</div>
+    ${outfits.length === 0
+      ? `<div class="empty-state">no outfits yet &mdash; <a href="studio.html" style="color:#a78bfa">go to studio</a></div>`
+      : `<div class="outfit-grid">${outfits.map(renderOutfitCard).join('')}</div>`
+    }
+  </div>
+`;
+</script>
+</body>
+</html>
